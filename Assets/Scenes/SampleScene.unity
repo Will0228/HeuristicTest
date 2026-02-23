@@ -409,8 +409,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _areaSize: {x: 20, y: 20}
   _coinNum: 100
-  _timeLimit: 60
-  _startPos: {x: 0, y: 0}
+  _timeLimit: 10
+  _timeSpeedUpRate: 12
+  _startPos: {x: 10, y: 10}
   _preparationTime: 2
   _areaFactory: {fileID: 581594630}
 --- !u!4 &581594629

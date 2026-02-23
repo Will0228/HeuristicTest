@@ -18,30 +18,32 @@ namespace Model
         
         private readonly Vector2Int[,] _cachedDistanceMatrix = new Vector2Int[3, 3];
 
-        private float _currentTime;
         private Vector2Int _currentPosition;
         private List<CoinInfo> _currentRoutes = new();
+        public IReadOnlyList<CoinInfo> RemainedCoins => _currentRoutes;
         private CoinInfo _currentTargetCoinInfo;
         public int CurrentTargetCoinId => int.Parse(_currentTargetCoinInfo.Id);
         public Vector2Int CurrentTargetCoinPosition => _currentTargetCoinInfo.Position;
         private int _currentScore = 0;
-        private float _currentTemp = 10000f;
+        private float _currentTemp = 1000f;
 
         private int _tryCalculateCount = 0;
 
         private float _timeLimit;
         private Vector2Int _startPos;
-
+        private int _timeSpeedUpRate;
+        
         private readonly Subject<int> _onGetCoinScoreSubject = new();
         public Observable<int> GetCoinScoreAsObservable() => _onGetCoinScoreSubject;
         
         // スレッドセーフなRandom
         private System.Random _rand = new();
 
-        public HeuristicSolverModel(float timeLimit, Vector2Int startPos)
+        public HeuristicSolverModel(float timeLimit, Vector2Int startPos, int timeSpeedUpRate)
         {
             _timeLimit = timeLimit;
             _startPos = startPos;
+            _timeSpeedUpRate = timeSpeedUpRate;
         }
         
         public void SetCoinInfo(List<CoinInfo> coinInfos)
@@ -72,7 +74,7 @@ namespace Model
         public void Optimize()
         {
             // _tryCalculateCount++;
-            // if (_tryCalculateCount % 100 == 0)
+            // if (_tryCalculateCount % 1000 == 0)
             // {
             //     Debug.Log($"試行回数 : {_tryCalculateCount}");
             // }
@@ -80,7 +82,7 @@ namespace Model
             var nextRoute = ReverseRoot(_currentRoutes);
             int nextScore = CalculateScore(_currentPosition, nextRoute);
 
-            if (AcceptanceProbability(_currentScore, nextScore, _currentTemp) > _rand.NextDouble())
+            if (AcceptanceProbability(nextScore) > _rand.NextDouble())
             {
                 _currentRoutes = nextRoute;
                 _currentScore = nextScore;
@@ -101,7 +103,7 @@ namespace Model
             
             foreach (var info in infos)
             {
-                elapsed += Vector2Int.Distance(currentPosition, info.Position);
+                elapsed += Vector2Int.Distance(currentPosition, info.Position) / _timeSpeedUpRate;
                 // 制限時間を超えた場合は強制終了
                 if (elapsed >= _timeLimit)
                 {
@@ -117,10 +119,10 @@ namespace Model
         }
 
         // 変更後のルート受け入れ可能性
-        private float AcceptanceProbability(int current, int next, float temp)
+        private float AcceptanceProbability(int next)
         {
-            if (next > current) return 1.0f;
-            return Mathf.Exp((next - current) / temp);
+            if (next > _currentScore) return 1.0f;
+            return Mathf.Exp((next - _currentScore) / _currentTemp);
         }
 
         // 局所探索法によるルート変更
